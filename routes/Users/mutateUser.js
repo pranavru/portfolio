@@ -1,8 +1,8 @@
 const UserType = require('./userModel');
-const serviceURLUsers = require('../../assets/URLs/serviceURL');
 
 const axios = require('axios');
 const { GraphQLInt, GraphQLNonNull, GraphQLObjectType, GraphQLString } = require('graphql');
+const { User } = require('../../Models/UserModel');
 
 const userMutations = new GraphQLObjectType({
     name: "userMutation",
@@ -14,26 +14,35 @@ const userMutations = new GraphQLObjectType({
                 email: { type: new GraphQLNonNull(GraphQLString) },
                 age: { type: new GraphQLNonNull(GraphQLInt) },
             },
-            resolve(parentValue, args) {
-                return axios.post(serviceURLUsers, {
+            resolve: (_, args) => new Promise((resolve, reject) => {
+                let newUser = {
                     name: args.name,
                     email: args.email,
-                    age: args.email
-                }).then(
-                    res => res.data
-                );
-            }
+                    age: args.age
+                }
+                User.insertMany(newUser, (error, user) => {
+                    if (error) {
+                        reject(error);
+                    } else if (user) {
+                        resolve(user[0]);
+                    }
+                })
+            })
         },
-        deleteCustomer: {
+        deleteUser: {
             type: UserType,
             args: {
                 id: { type: new GraphQLNonNull(GraphQLString) }
             },
-            resolve(parentValue, args) {
-                return axios.delete(serviceURLUsers + args.id).then(
-                    res => res.data
-                );
-            }
+            resolve: (_, args) => new Promise((resolve, reject) => {
+                User.findByIdAndDelete(args.id, (error, user) => {
+                    if (error) {
+                        reject(error)
+                    } else {
+                        resolve(user)
+                    }
+                })
+            })
         },
         updateCustomer: {
             type: UserType,
@@ -43,15 +52,16 @@ const userMutations = new GraphQLObjectType({
                 email: { type: GraphQLString },
                 age: { type: GraphQLInt },
             },
-            resolve(parentValue, args) {
-                return axios.put(serviceURLUsers + args.id, {
-                    name: args.name,
-                    email: args.email,
-                    age: args.age
-                }).then(
-                    res => res.data
-                );
-            }
+            resolve: (_, args) => new Promise((resolve, reject) => {
+                let newUser = new User(args);
+                User.findOneAndUpdate(args.id, newUser, (error, user) => {
+                    if (error) {
+                        reject(error)
+                    } else {
+                        resolve(user)
+                    }
+                })
+            })
         }
     }
 })
